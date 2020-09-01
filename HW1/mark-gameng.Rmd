@@ -1,0 +1,56 @@
+---
+title: "CS 422 - HW 0"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+author: Mark Gameng,
+        Illinois Institute of Technology
+---
+
+### Part 1-A
+```{r}
+data(cars)
+cars
+```
+
+### Part 1-B
+
+```{r}
+plot(cars, main="The Cars Dataset")
+```
+### Part 1-C (Summary)
+```{r}
+summary(cars)
+```
+
+### Part 1-D
+```{r}
+summ <- summary(cars)
+max.speed.str <- summ[,1][6]
+max.speed.str <- strsplit(max.speed.str, ":")
+max.speed <- max.speed.str[[1]][2]
+
+min.dist.str <- summ[,2][1]
+min.dist.str <- strsplit(min.dist.str, ":  ")
+min.dist <- min.dist.str[[1]][2]
+
+str <- paste0("Maximum speed is ", max.speed, ", and minimum distance is ", 
+              min.dist)
+
+str
+```
+
+### Part 2-A (Enter your code below)
+```{r}
+students <- read.csv('student.csv', sep = ';')
+brad <- c('Brad Pitt', 40051, 2.21, 'C')
+students <- rbind(students, brad)
+students
+```
+### Part 2-B (Enter your code below)
+```{r}
+library(dplyr)
+Astudents <- dplyr::filter(students, grade == 'A')
+select(Astudents, name, gpa)
+```
