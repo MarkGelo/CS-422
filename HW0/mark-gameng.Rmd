@@ -52,5 +52,6 @@ students
 ```{r}
 library(dplyr)
 Astudents <- dplyr::filter(students, grade == 'A')
-select(Astudents, name, gpa)
+#select(Astudents, name, gpa)
+Astudents[c('name', 'gpa')]
 ```
