@@ -1,0 +1,87 @@
+---
+title: "CS 422 - HW 1"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+author: Mark Gameng,
+        Illinois Institute of Technology
+---
+
+## Part 2.1
+
+### (a)
+```{r}
+college <- read.csv("College.csv", row.names = 1)
+college[1:5, c(1,5,8,10)]
+```
+
+### (b)
+```{r}
+library(dplyr)
+private <- dplyr::filter(college, Private == "Yes")
+public <- dplyr::filter(college, Private == "No")
+print(paste('There are', nrow(private), 'private colleges, and', nrow(public), 'public colleges in the dataset'))
+```
+### (c)
+```{r}
+c_college <- college[, c("Private", "Apps", "Accept", "Enroll", "PhD", "perc.alumni", "S.F.Ratio", "Grad.Rate")]
+head(c_college)
+```
+
+### (d)
+```{r}
+priv <- hist(
+  subset(c_college, Private == "Yes", select = c("PhD"))[, "PhD"],
+  main = "PhD Holders in Private Colleges",
+  xlab = "# PhD Holders",
+  ylab = "Frequency",
+  xlim = c(0,120),
+  col = rainbow(length(priv$count)))
+pub <- hist(
+  subset(c_college, Private == "No", select = c("PhD"))[, "PhD"],
+  main = "PhD Holders in Public Colleges",
+  xlab = "# PhD Holders",
+  ylab = "Frequency",
+  xlim = c(0, 120),
+  col = rainbow(length(pub$count)))
+```
+
+### (e)
+```{r}
+sorted_college <- c_college[order(c_college$Grad.Rate),] # ascending
+cat("Minimum graduation rates: ", rownames(sorted_college)[1:5], 
+    sep = "\n")
+cat("Maximum graduation rates: ", rownames(tail(sorted_college, 5)), 
+    sep = "\n")
+
+```
+### (f)
+```{r}
+library(psych)
+pairs.panels(c_college[,c("PhD", "S.F.Ratio", "Grad.Rate")])
+```
+Grad.Rate and PhD have the highest correlation. It makes sense because if you are doing PhD, you're probably invested into what you are studying due to it being like 6 years extra, and thus more likely to succeed and graduate.
+
+Grad.Rate and S.F.Ratio have the lowest correlation. This negative correlation means, the higher the student faculty ratio, the less the graduation rate, which makes sense. The higher the student faculty ratio, the less time for one on one interaction between the students. With 1:1 ratio of student and faculty, means when a student needs help, they probably are able to get help from a faculty, meanwhile if it's like 10:1, its much harder for the professor to help students.
+
+### (g)
+```{r}
+boxplot(perc.alumni~Private, data = college,
+        main = "Which alumni donates more?",
+        ylab = "Percent of Alumni",
+        xlab = "Private or not")
+```
+Private School alumni tends to donate more to their colleges than non-private. The mean and IQR of the % of alumni from private colleges are greater than the non-private.
+
+### (h)
+```{r}
+cdf_function <- ecdf(college[,"Expend"])
+plot(cdf_function, 
+     main = "Expenditure",
+     xlab = "Expense")
+grid()
+```
+Median expenditure per student seems to be about $9000.
+
+80% of students pay less than about $12000.
