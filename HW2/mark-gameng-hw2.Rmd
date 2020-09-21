@@ -1,0 +1,140 @@
+---
+title: "CS 422 - HW 2"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+author: Mark Gameng,
+        Illinois Institute of Technology
+---
+
+## Part 2.1
+
+Question 8 (Gareth James, ISLR 7e)
+
+### (a)
+```{r}
+library(ISLR)
+fit <- lm(mpg ~ horsepower, data = Auto)
+# response ~ predictor
+summary(fit)
+```
+Yes, there is a relationship between the predictor, horsepower, and the response, mpg. The Pr(>|t|) is really low for the intercept and horsepower, thus it is very unlikely to observe this kind of relationship between the two due to chance. This p value allows us to conclude that there is a relationship between horsepower and mpg.
+
+The relationship between the predictor and the response is fairly strong. It has an R squared value of 0.6059 with an RSE of 4.906. Also the coefficient for horsepower is -0.15784, which is fairly high in my opinion, as +10 horsepower results in about -1.5 mpg.
+
+The relationship is negative, with coefficient of -0.157845. The more horsepower, the less the mpg and vice versa.
+
+```{r}
+predict(fit, newdata = data.frame(horsepower = c(98)), 
+        interval = "confidence")
+```
+The predicted mpg associated with a horsepower of 98 is 24.46708. The associated 95% confidence interval is (23.97308, 24.96108)
+
+### (b)
+```{r}
+plot(Auto[,c('horsepower', 'mpg')])
+abline(lm(mpg ~ horsepower, data = Auto))
+```
+
+### (c)
+```{r}
+plot(fit)
+```
+In the residuals vs fitted, the pattern is not linear as after x = 20, the line starts going up. This shows that there might not be a linear relationship between the predictors and response variables. In the Normal Q-Q, residuals are normally distributed, so that's good. In Scale-Location, the line is not a horizontal line with equally spread points. So, our data does not have uniform variance, or heteroscedastic. The Residuals vs Leverage shows that there are no influential cases.
+
+## Part 2.2
+
+### (a)
+```{r}
+set.seed(1122)
+index <- sample(1:nrow(Auto), 0.95 * dim(Auto)[1])
+train.df <- Auto[index,]
+test.df <- Auto[-index,]
+Auto.lm <- lm(mpg ~ cylinders + displacement + horsepower + weight + acceleration + origin + year, data = train.df)
+```
+
+### (a.i)
+Using name as a predictor is not reasonable because its a name, and can have many variations. You can't really predict mpg just from a name, as similar names could have different variations of a car and thus different mpg.
+
+### (a.ii)
+```{r}
+summary(Auto.lm)
+RMSE <- sqrt(c(crossprod(Auto.lm$residuals))/length(Auto.lm$residuals))
+print(paste0("RMSE: ", RMSE))
+```
+I would say the model fits the data because the R squared is fairly high with 0.817. R squared is a measure of how well the model fits our data. Also the RSE is fairly low, 3.367, with 364 degrees of freedom. Also the RMSE is 3.33, which is fairly low.
+
+### (a.iii)
+```{r}
+Auto.res <- resid(Auto.lm)
+plot(Auto.res, ylab = 'Residuals', main = 'Residuals') # plot residuals
+```
+
+### (a.iv)
+```{r}
+hist(Auto.res, xlab = 'Residual', main = 'Histogram of Residuals')
+```
+The histogram somewhat follows a Gaussian distribution, but it is a little skewed right. Tends to have a little more negative residuals than positive. Though, they do converge at 0.
+
+### (b)
+
+### (b.i)
+```{r}
+# year, weight, origin are all statistically significant, p is really low
+Auto.newlm <- lm(mpg ~ year + weight + origin, data =train.df)
+```
+
+### (b.ii)
+```{r}
+summary(Auto.newlm)
+RMSE <- sqrt(
+  c(crossprod(Auto.newlm$residuals))/length(Auto.newlm$residuals))
+print(paste0("RMSE: ", RMSE))
+```
+I would say the model fits the data because the R squared is fairly high with 0.8126. R squared is a measure of how well the model fits our data. Also the RSE is fairly low, 3.389, with 368 degrees of freedom. Also the RMSE is 3.37, which is fairly low.
+
+### (b.iii)
+```{r}
+Auto.newres <- resid(Auto.newlm)
+plot(Auto.newres, ylab = 'Residuals', main = 'Residuals') # plot residuals
+```
+
+### (b.iv)
+```{r}
+hist(Auto.newres, xlab = 'Residual', main = 'Histogram of Residuals')
+```
+The histogram does somewhat follow a Gaussian distribution, but it is skewed right. Tends to have more negative residuals than positive.
+
+### (b.v)
+```{r}
+plot(Auto.lm)
+plot(Auto.newlm)
+```
+I think the model with just the predictors that are statistically significant is better because it is a little better in regards to how the model fits the data, because it only cares about variables that are significant. Also looking at the residual analysis, in the Residual vs Leverage, the model with 3 predictors is much better because there are no influential cases. The other graphs in the residual analysis are similar.
+
+### (c)
+```{r}
+pr <- predict(Auto.newlm, test.df, interval = "confidence") # 95% CI
+pred.df <- data.frame("Prediction" = pr[,c("fit")],
+                      "Response" = test.df[,c("mpg")],
+                      "Lower" = pr[,c("lwr")],
+                      "Upper" = pr[,c("upr")])
+pred.df
+```
+
+### (d)
+```{r}
+match_f <- function(r, c1, c2){
+  if(c1 <= r && r <= c2){
+    return(1)
+  }
+  return(0)
+}
+Matches <- apply(pred.df, MARGIN = 1, function(x) match_f(x[2], x[3], x[4]))
+pred.df <- cbind(pred.df, Matches)
+pred.df
+correct <- sum(pred.df[,c("Matches")])
+print(paste0("Total observations correctly predicted: ", correct))
+```
+
