@@ -120,7 +120,6 @@ pred.df <- data.frame("Prediction" = pr[,c("fit")],
                       "Response" = test.df[,c("mpg")],
                       "Lower" = pr[,c("lwr")],
                       "Upper" = pr[,c("upr")])
-pred.df
 ```
 
 ### (d)
@@ -137,4 +136,23 @@ pred.df
 correct <- sum(pred.df[,c("Matches")])
 print(paste0("Total observations correctly predicted: ", correct))
 ```
+
+### (e)
+```{r}
+prnew <- predict(Auto.newlm, test.df, interval = "prediction") # 95% CI
+newpred.df <- data.frame("Prediction" = prnew[,c("fit")],
+                      "Response" = test.df[,c("mpg")],
+                      "Lower" = prnew[,c("lwr")],
+                      "Upper" = prnew[,c("upr")])
+Matches <- apply(newpred.df, MARGIN = 1, function(x) match_f(x[2], x[3], x[4]))
+newpred.df <- cbind(newpred.df, Matches)
+newpred.df
+correct <- sum(newpred.df[, c("Matches")])
+print(paste0("Total observations correctly predicted: ", correct))
+```
+
+### (f)
+(e), prediction interval, results in more matches. Confidence interval results in 7 matches while prediction interval results in 20 matches.
+
+Prediction interval results in more matches because its confidence interval is much wider. Looking at the first row of the data frames, the range is (22.29,23.87) vs (16.37,29.79). The prediction values are the same for both, the only difference is the lower and upper bound where prediction interval have a much wider range than the confidence interval.
 
