@@ -1,0 +1,20 @@
+---
+title: "CS 422 - HW 3"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+author: Mark Gameng,
+        Illinois Institute of Technology
+---
+
+## Part 1.1
+
+### Model
+```{r}
+library(rpart)
+library(rpart.plot)
+model <- rpart(Species ~ ., data = iris)
+tree <- rpart.plot(model, extra = 104, fallen.leaves = T, type = 4, main = "Iris dataset Decision Tree")
+print(model)
+```
