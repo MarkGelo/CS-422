@@ -1,0 +1,144 @@
+---
+title: "CS 422 - HW 4"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+author: Mark Gameng,
+        Illinois Institute of Technology
+---
+
+## Part 2.1
+
+```{r}
+data <- read.csv("hotel_bookings.csv", header = TRUE)
+```
+
+### (a)
+```{r}
+resort <- data[data$hotel == "Resort Hotel", ]
+city <- data[data$hotel == "City Hotel", ]
+print(paste("Resort Hotels:", nrow(resort), ", City Hotels:", nrow(city)))
+```
+### (b)
+```{r}
+canceled <- sum(data[,c("is_canceled")])
+not_canceled <- nrow(data) - canceled
+print(paste("Number of guests who canceled reservation:", canceled))
+print(paste("Number of guests who did not cancel the reservation", not_canceled))
+```
+### (c)
+```{r}
+cust_types <- split(data, data$customer_type)
+nums <- lapply(cust_types, nrow)
+most <- which.max(res_cust_types)
+cat("Customer type with the most reservations is", names(nums)[most], "with", nums[[most]], "reservations")
+```
+### (d)
+```{r}
+park_spaces <- split(data, data$required_car_parking_spaces)
+park_nums <- lapply(park_spaces, nrow)
+names_park <- sort(names(park_nums), decreasing = T)
+cat(park_nums[[names_park[1]]], "customers required the most number of parking spaces,", names_park[[1]])
+```
+### (e)
+```{r}
+least_park <- tail(ordered_park, n=1)
+cat(least_park[[1]], "customers required the least number of parking spaces,", names(least_park)[1])
+```
+### (f)
+```{r}
+library(dplyr)
+got_room <- nrow(dplyr::filter(data, data$reserved_room_type == data$assigned_room_type))
+cat((got_room / nrow(data)) * 100, "% of the people who expressed a room preference during reservation got the room during check-in")
+```
+### (g)
+```{r}
+resorts_c <- lapply(split(resort, resort$country), nrow)
+resorts_c1 <- tail(resorts_c[order(unlist(resorts_c), decreasing = F)], n = 11)
+resorts_c2 <- resorts_c1[-2] # remove the anomaly
+citys_c <- lapply(split(city, city$country), nrow)
+citys_c1 <- tail(citys_c[order(unlist(citys_c), decreasing = F)], n = 10)
+barplot(unlist(resorts_c2), col = rainbow(10), 
+        main = "Top 10 countries of origin for Resort Hotels")
+barplot(unlist(citys_c1), col = rainbow(10), 
+        main = "Top 10 countries of origin for City Hotels")
+```
+### (h)
+Looking at the plots, the most visitors to City and Resort hotels arrive from PRT. Thus, the origin of this data set is most likely PRT.
+
+## Part 2.2
+
+### (a)
+### (a.i)
+```{r}
+library(rpart)
+library(rpart.plot)
+set.seed(1122)
+index <- sample(1:nrow(data), 0.90 * dim(data)[1])
+train.df <- data[index,]
+test.df <- data[-index,]
+model <- rpart(is_canceled ~ lead_time +  previous_cancellations + 
+                 deposit_type + customer_type, data = train.df)
+#model <- rpart(is_canceled ~ lead_time + market_segment + distribution_channel + previous_cancellations + previous_bookings_not_canceled + booking_changes + deposit_type + customer_type + total_of_special_requests, data = train.df)
+tree <- rpart.plot(model, fallen.leaves = T, type = 4, main = "Canceled Hotel Booking")
+```
+### (a.ii)
+The variables that are important are deposit_type, lead_time, previous cancellations, and customer_type.
+
+### (a.iii)
+```{r}
+pr <- predict(model, newdata = test.df)
+pred.df <- data.frame("Prediction" = pr,
+                      "Actual" = test.df[, c("is_canceled")])
+Predicted <- apply(pred.df, MARGIN = 1, function(x) if(x[1]< 0.5) 0 else 1)
+pred.df <- cbind(pred.df, Predicted)
+Matches <- apply(pred.df, MARGIN = 1, function(x) if(x[2] == x[3]) 1 else 0)
+pred.df <- cbind(pred.df, Matches)
+pred.df[1:100,]
+matr <- table(pred.df$Predicted, pred.df$Actual)
+library(caret)
+conf <- confusionMatrix(matr)
+A <- conf[2][[1]][1]
+C <- conf[2][[1]][2]
+B <- conf[2][[1]][3]
+D <- conf[2][[1]][4]
+accuracy <- (A + D) / nrow(pred.df)
+error <- (B + C) / nrow(pred.df)
+specificity <- D / (B + D)
+sensitivity <- A / (A + C)
+balanced_accuracy <- (sensitivity + specificity) / 2
+precision <- A / (A + B)
+conf
+cat("Accuracy:", accuracy, 
+    "\nError:", error, 
+    "\nSpecificity:", specificity, 
+    "\nSensitivity:", sensitivity, 
+    "\nBalanced Accuracy:", balanced_accuracy, 
+    "\nPrecision:", precision)
+```
+### (a.iv)
+```{r}
+library(ROCR)
+pred1 <- prediction(pr, test.df$is_canceled)
+roc_plot <- plot(performance(pred1, "tpr", "fpr"))
+```
+### (a.v)
+```{r}
+auc_1 <- performance(pred1, measure = "auc")
+auc <- auc_1@y.values[[1]]
+auc_roc <- ModelMetrics::auc(pred.df$Actual, pred.df$Predicted)
+cat("The AUC of the ROC curve is", auc_roc)
+```
+
+
+
+
+
+
+
+
+
+
+
+
