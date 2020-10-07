@@ -31,7 +31,7 @@ print(paste("Number of guests who did not cancel the reservation", not_canceled)
 ```{r}
 cust_types <- split(data, data$customer_type)
 nums <- lapply(cust_types, nrow)
-most <- which.max(res_cust_types)
+most <- which.max(nums)
 cat("Customer type with the most reservations is", names(nums)[most], "with", nums[[most]], "reservations")
 ```
 ### (d)
@@ -43,8 +43,8 @@ cat(park_nums[[names_park[1]]], "customers required the most number of parking s
 ```
 ### (e)
 ```{r}
-least_park <- tail(ordered_park, n=1)
-cat(least_park[[1]], "customers required the least number of parking spaces,", names(least_park)[1])
+least_park <- tail(names_park, n=1)
+cat(park_nums[[least_park[1]]], "customers required the least number of parking spaces,", least_park[1])
 ```
 ### (f)
 ```{r}
@@ -127,8 +127,7 @@ roc_plot <- plot(performance(pred1, "tpr", "fpr"))
 ```{r}
 auc_1 <- performance(pred1, measure = "auc")
 auc <- auc_1@y.values[[1]]
-auc_roc <- ModelMetrics::auc(pred.df$Actual, pred.df$Predicted)
-cat("The AUC of the ROC curve is", auc_roc)
+cat("The AUC of the ROC curve is", auc)
 ```
 
 
