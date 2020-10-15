@@ -1,0 +1,167 @@
+---
+title: "CS 422 - HW 5"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+author: Mark Gameng,
+        Illinois Institute of Technology
+---
+
+## Part 2.1
+
+### (a)
+```{r}
+library(rpart)
+library(rpart.plot)
+data <- read.csv("hotel_bookings.csv", header = TRUE)
+set.seed(1122)
+index <- sample(1:nrow(data), 0.90 * dim(data)[1])
+train.df <- data[index,]
+test.df <- data[-index,]
+model <- rpart(is_canceled ~ lead_time +  previous_cancellations + 
+                 deposit_type + customer_type, data = train.df,
+               control = rpart.control(cp = 0.0))
+```
+
+### (b)
+```{r}
+cat("Number of splits in the unpruned tree", nrow(model[['splits']]))
+```
+
+### (c)
+```{r}
+pr <- predict(model, newdata = test.df)
+pred.df <- data.frame("Prediction" = pr,
+                      "Actual" = test.df[, c("is_canceled")])
+Predicted <- apply(pred.df, MARGIN = 1, function(x) if(x[1]< 0.5) 0 else 1)
+pred.df <- cbind(pred.df, Predicted)
+Matches <- apply(pred.df, MARGIN = 1, function(x) if(x[2] == x[3]) 1 else 0)
+pred.df <- cbind(pred.df, Matches)
+#pred.df[1:100,]
+matr <- table(pred.df$Predicted, pred.df$Actual)
+library(caret)
+conf <- confusionMatrix(matr)
+A <- conf[2][[1]][1]
+C <- conf[2][[1]][2]
+B <- conf[2][[1]][3]
+D <- conf[2][[1]][4]
+accuracy <- (A + D) / nrow(pred.df)
+error <- (B + C) / nrow(pred.df)
+specificity <- D / (B + D)
+sensitivity <- A / (A + C)
+balanced_accuracy <- (sensitivity + specificity) / 2
+precision <- A / (A + B)
+#conf
+cat("Before pruning:",
+    "\nAccuracy:", round(accuracy, digits = 3), 
+    "\nError:", round(error, digits = 3), 
+    "\nSpecificity:", round(specificity, digits = 3), 
+    "\nSensitivity:", round(sensitivity, digits = 3), 
+    "\nBalanced Accuracy:", round(balanced_accuracy, digits = 3), 
+    "\nPrecision:", round(precision, digits = 3))
+```
+### (d)
+```{r}
+complexity <- model$cptable[which.min(model$cptable[, "xerror"]), "CP"]
+xerror <- model$cptable[which.min(model$cptable[, "xerror"]), "xerror"]
+pruned_tree <- prune(tree = model, 
+                      cp = complexity)
+# 5 decimal places for complexity removes to omuch info 1e^-5 from 9.2^-6
+cat("Prune point occurs at a complexity of", round(complexity, digits = 7),
+    "\nAt this complexity, xerror is", round(xerror, digits = 5))
+```
+### (e)
+```{r}
+pr <- predict(pruned_tree, newdata = test.df)
+pred.df <- data.frame("Prediction" = pr,
+                      "Actual" = test.df[, c("is_canceled")])
+Predicted <- apply(pred.df, MARGIN = 1, function(x) if(x[1]< 0.5) 0 else 1)
+pred.df <- cbind(pred.df, Predicted)
+Matches <- apply(pred.df, MARGIN = 1, function(x) if(x[2] == x[3]) 1 else 0)
+pred.df <- cbind(pred.df, Matches)
+#pred.df[1:100,]
+matr <- table(pred.df$Predicted, pred.df$Actual)
+library(caret)
+conf <- confusionMatrix(matr)
+A <- conf[2][[1]][1]
+C <- conf[2][[1]][2]
+B <- conf[2][[1]][3]
+D <- conf[2][[1]][4]
+accuracy <- (A + D) / nrow(pred.df)
+error <- (B + C) / nrow(pred.df)
+specificity <- D / (B + D)
+sensitivity <- A / (A + C)
+balanced_accuracy <- (sensitivity + specificity) / 2
+precision <- A / (A + B)
+#conf
+cat("After pruning:",
+    "\nAccuracy:", round(accuracy, digits = 3), 
+    "\nError:", round(error, digits = 3), 
+    "\nSpecificity:", round(specificity, digits = 3), 
+    "\nSensitivity:", round(sensitivity, digits = 3), 
+    "\nBalanced Accuracy:", round(balanced_accuracy, digits = 3), 
+    "\nPrecision:", round(precision, digits = 3))
+```
+
+### (f)
+
+The pruned tree generalizes better but only a little bit in my case. Due to the rounding to 3 decimal places, you can only see that it improved in some statistics, but it actually improves in most but only a little bit.
+
+## Part 2.2
+```{r}
+library(randomForest)
+train.df$is_canceled <- as.factor(train.df$is_canceled)
+test.df$is_canceled <- as.factor(test.df$is_canceled)
+output <- data.frame("ntree" = c(), "mtry" = c(),
+                     "cfn" = c(), "oob" = c(),
+                     "Balanced Accuracy" = c(),
+                     "Sensitivity" = c(),
+                     "Specificity" = c())
+ntree <- c(250, 500, 750)
+mtry <- c(sqrt(4), sqrt(5), sqrt(6))
+for (nt in ntree){
+  for (mt in mtry){
+    rand_forest <- randomForest(is_canceled ~ lead_time + 
+                                  previous_cancellations + deposit_type + 
+                                  customer_type, data = train.df,
+                                ntree = nt, mtry = mt,
+                                xtest = test.df[,c("lead_time", "previous_cancellations", "deposit_type", "customer_type")],
+                                ytest = test.df$is_canceled)
+    cfn_m <- rand_forest[["test"]]["confusion"]
+    A <- cfn_m[1][[1]][1]
+    C <- cfn_m[1][[1]][2]
+    B <- cfn_m[1][[1]][3]
+    D <- cfn_m[1][[1]][4]
+    specificity <- D / (B + D)
+    sensitivity <- A / (A + C)
+    balanced_accuracy <- (sensitivity + specificity) / 2
+    output <- rbind(output, 
+                    data.frame("ntree" = nt, "mtry" = mt, 
+                               "cfn" = I(rand_forest[["test"]]["confusion"]),
+                               "oob" = tail(rand_forest$err.rate, 1)[,1],
+                               "Balanced Accuracy" = balanced_accuracy,
+                               "Sensitivity" = sensitivity,
+                               "Specificity" = specificity))
+  }
+}
+rownames(output) <- NULL
+```
+
+### (i)
+```{r}
+# get max spec, sens, balaccuracy
+avgs <- apply(output, MARGIN = 1, function(x) (x[[5]] + x[[6]] + x[[7]])/3)
+output <- cbind(output, avgs)
+output
+cat("The model with ntree = 500 and mtry = sqrt(6) is the best in terms of balanced accuracy, sensitivity and specificity.")
+```
+
+### (ii)
+```{r}
+output
+cat("The model with ntree = 250 and mtry = sqrt(6) is the best in terms of having the lowest OOB error")
+```
+
+### (iii)
+The best model determined by (i) is not the same model as determined by (ii).  In terms of OOB error, the best model was ntree = 250 and mtry = sqrt(6). Going in terms of balanced accuracy, sensitivity, and specificity with the test dataset, the best model had ntree = 500 and mtry = sqrt(6). OOB estimate is the mean prediction error of each tree using only the training data set due to sub sampling. Because it only uses the training data set to compute the OOB estimate, it stands to reason that using the resulting model with a test dataset to get specificity, etc. can result in getting a different "better" model. However looking at the resulting models with varying parameters, the OOB and averages of specificity, sensitivity, etc only have minor differences between one another(like OOB only ranging from 0.230 to 0.232).
