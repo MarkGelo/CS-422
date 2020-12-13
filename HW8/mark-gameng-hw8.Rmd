@@ -1,0 +1,82 @@
+---
+title: "CS 422 - HW 8"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+author: Mark Gameng,
+        Illinois Institute of Technology
+---
+
+## Part 2.1
+
+### (a)
+Created a canonical representation using python and the files have "-"canonical" appended into it. The csv files are included in zip.
+
+### (b)
+```{r}
+library(arules)
+library(arulesViz)
+tr_1k <- read.transactions("tr-1k-canonical.csv", sep=",")
+tr_5k <- read.transactions("tr-5k-canonical.csv", sep=",")
+tr_20k <- read.transactions("tr-20k-canonical.csv", sep=",")
+tr_75k <- read.transactions("tr-75k-canonical.csv", sep=",")
+```
+
+```{r}
+rules_1k <- apriori(tr_1k, parameter = list(support=0.01, confidence = 0.90))
+f_is_1k <- apriori(tr_1k, parameter=list(support=0.01, target="frequent itemsets"))
+rules_5k <- apriori(tr_5k, parameter = list(support=0.01, confidence = 0.90))
+f_is_5k <- apriori(tr_5k, parameter=list(support=0.01, target="frequent itemsets"))
+rules_20k <- apriori(tr_20k, parameter = list(support=0.01, confidence = 0.90))
+f_is_20k <- apriori(tr_20k, parameter=list(support=0.01, target="frequent itemsets"))
+rules_75k <- apriori(tr_75k, parameter = list(support=0.01, confidence = 0.90))
+f_is_75k <- apriori(tr_75k, parameter=list(support=0.01, target="frequent itemsets"))
+#plot(rules, engine = "htmlwidget")
+```
+
+### (b.1k)
+```{r}
+inspect(head(sort(f_is_1k, decreasing = T, by="count")))
+summary(rules_1k)
+inspect(head(rules_1k, by="confidence"))
+```
+
+### (b.5k)
+```{r}
+inspect(head(sort(f_is_5k, decreasing = T, by="count")))
+summary(rules_5k)
+inspect(head(rules_5k, by="confidence"))
+```
+
+### (b.20k)
+```{r}
+inspect(head(sort(f_is_20k, decreasing = T, by="count")))
+summary(rules_20k)
+inspect(head(rules_20k, by="confidence"))
+```
+
+### (b.75k)
+```{r}
+inspect(head(sort(f_is_75k, decreasing = T, by="count")))
+summary(rules_75k)
+inspect(head(rules_75k, by="confidence"))
+```
+
+### (c)
+
+Comparing the rules for each different subset, I found them to be in the same range in terms of support, confidence and lift. The rules showed are sorted by confidence, but generally in all subsets, the mean support was around 0.2, confidence 0.94, lift 13 which is really good. Also, the rule length distribution and the amount of rules didn't vary that much with 68 rules in 1k transactions and 73 rules with 75k transactions.
+
+### (d)
+```{r}
+inspect(head(sort(f_is_75k, decreasing = T, by="count")))
+inspect(head(sort(f_is_75k, decreasing = F, by="count")))
+```
+
+### (d.i)
+
+The most frequently purchased item is a Coffee Eclair with 8193 counts and support of 0.109.
+
+### (d.ii)
+
+The least frequently purchased itemset is an Apple Croissant, Apple Danish, Apple Tart, and a Cherry Soda with 1544 counts and support of 0.021

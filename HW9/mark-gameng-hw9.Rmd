@@ -1,0 +1,137 @@
+---
+title: "CS 422 - HW 8"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+author: Mark Gameng,
+        Illinois Institute of Technology
+---
+
+## Part 2.1 KMeans
+
+### (a)
+
+The name of the animal should be omitted when clustering, and all the other attributes are important.
+
+Yes, the data needs to be standardized and can be done in r using scale(data)
+
+I cleaned up the data in text file, and the cleaned data is now in file19.csv
+
+### (b)
+```{r}
+library(factoextra)
+orig_df <- read.csv("file19.csv")
+df <- orig_df
+df$X <- NULL # remove X column -- the idx
+df$Name <- NULL # remove Name
+df.standardized <- scale(data.matrix(df))
+```
+
+### (b.i)
+```{r}
+fviz_nbclust(df.standardized, kmeans, method="silhouette")
+# 8 clusters
+cat('8 Clusters are needed')
+```
+
+### (b.ii)
+```{r}
+k <- kmeans(df.standardized, center= 8)
+fviz_cluster(k, data=df.standardized, main="Scaled clusters")
+```
+### (b.iii)
+```{r}
+clst <- c(1,2,3,4,5,6,7,8)
+for (n in clst){
+  cat(length(which(k$cluster == n)), "observations in cluster", n, "\n")
+}
+```
+
+### (b.iv)
+```{r}
+cat(k$totss, "Total SSE")
+```
+
+### (b.v)
+```{r}
+cls_i = 1
+for (x in k$withinss){
+  cat(x, "SSE for cluster", cls_i, "\n")
+  cls_i <- cls_i + 1
+}
+```
+### (b.vi)
+```{r}
+clsss <- c(1,2,3,4,5,6,7,8)
+for (x in clsss){
+  cat("Cluster", x, "-", paste(orig_df[which(k$cluster == x), c('Name')], collapse = (", ")), "\n")
+}
+```
+Looking at the animals in each cluster, they somewhat makes sense. The only cluster I feel that have some animals that don't make sense is cluster 1. Cluster 1 has weasels, badgers, otters, seals, jaguars and ocelots in one cluster, which I find quite weird. However, I am going based on appearances, so according to their attributes, this cluster might have made sense. Thus, these resulting clusters makes sense and it met expectations.
+
+## Part 2.2 dbscan
+
+### (a)
+```{r}
+library(dbscan)
+library(fpc)
+library(factoextra)
+s1 <- read.csv("s1.csv")
+s1
+s1.scaled <- scale(s1)
+```
+I think its necessary to standardize the data due to how large the numbers are and also, generally you should 'always' scale data.
+
+### (b)
+```{r}
+plot(s1.scaled, main="Data")
+```
+
+### (b.ii)
+From the plot, I see 15 clusters, and I found them to be somewhat well-separated.
+
+### (c.i)
+```{r}
+fviz_nbclust(s1.scaled, kmeans, method="wss", k.max = 20)
+```
+
+### (c.ii)
+```{r}
+fviz_nbclust(s1.scaled, kmeans, method="silhouette", k.max = 20)
+```
+
+### (c.iii)
+Looking at the graphs, the optimal number found by silhoutte and wss is 19 clusters. 
+
+### (d)
+```{r}
+k <- kmeans(s1.scaled, center= 19)
+fviz_cluster(k, data=s1.scaled, main="Scaled clusters")
+```
+
+### (d.ii)
+Kmeans clustered the data somewhat well except for certain parts. There is 2 parts that should just be one cluster, but Kmeans split it to 3 and 2 clusters. Also it results in 19 clusters, where it should be more near or equals 15 clusters.
+
+### (e.i)
+I think MinPts = 6 is reasonable for this dataset because of how many points are quite "outside" of the clusters.
+
+### (e.ii)
+```{r}
+kNNdistplot(s1.scaled, k = 6)
+```
+It seems that the value for eps is around 0.08. So I am going to try 0.075, 0.08, 0.085 and see which one results in the best one.
+
+I found 0.08 to be the best eps value as it results in 15 clusters.
+```{r}
+db <- fpc::dbscan(s1.scaled, eps = 0.08, MinPts = 6)
+plot(db, s1.scaled, main = "DBSCAN", frame = FALSE)
+#print(db)
+cat("At minPts = 6, eps = 0.08, there are 15 clusters")
+```
+
+
+
+
+
+

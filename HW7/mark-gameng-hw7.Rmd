@@ -1,0 +1,200 @@
+---
+title: "CS 422 - HW 7"
+output: 
+  html_notebook:
+    toc: yes
+    toc_float: yes
+author: Mark Gameng,
+        Illinois Institute of Technology
+---
+
+## Part 2.1
+
+```{r}
+library(keras)
+library(dplyr)
+library(caret)
+df <- read.csv("activity-small.csv")
+set.seed(1122)
+df <- df[sample(nrow(df)), ] # Shuffle, as all of the data in the .csv file
+                             # is ordered by label!  This will cause problems
+                             # if we do not shuffle as the validation split
+                             # may not include observations of class 3 (the
+                             # class that occurs at the end).  The validation_
+                             # split parameter samples from the end of the
+                             # training set.
+indx <- sample(1:nrow(df), 0.20*nrow(df))
+test.df  <- df[indx, ]
+train.df <- df[-indx, ]
+
+label.test <- test.df$label
+test.df$label <- NULL
+test.df <- as.data.frame(scale(test.df))
+test.df$label <- label.test
+rm(label.test)
+
+label.train <- train.df$label
+train.df$label <- NULL
+train.df <- as.data.frame(scale(train.df))
+train.df$label <- label.train
+rm(label.train)
+rm(indx)
+
+x_train <- train.df[,c("xaccel", "yaccel", "zaccel")]
+x_test <- as.matrix(test.df[,c("xaccel", "yaccel", "zaccel")])
+```
+
+### (a)
+```{r}
+create_model <- function(batch_s){# 100 epoch
+  model <- NULL
+  model <- keras_model_sequential() %>%
+    layer_dense(units = 6, activation="sigmoid", input_shape=c(3)) %>%
+    layer_dense(units = 4, activation="softmax")
+  model %>% 
+    compile(loss = "categorical_crossentropy", 
+            optimizer="adam", 
+            metrics=c("accuracy"))
+  begin <- Sys.time()
+  model %>% fit(
+    data.matrix(x_train),
+    to_categorical(train.df$label),
+    epochs=100,
+    batch_size= batch_s,
+    validation_split=0.20
+  )
+  end <- Sys.time()
+  time <- as.numeric(difftime(end, begin, units = "secs"), units = "secs")
+  print(time)
+  re <- list("model" = model, "time" = time)
+  re
+}
+model_list <- create_model(1)
+model <- model_list$model
+model %>% evaluate(x_test, to_categorical(test.df$label))
+pred.class  <- model %>% predict_classes(x_test)
+pred.prob   <- model %>% predict(x_test) %>% round(3)
+```
+
+### (a.i & a.ii)
+```{r}
+cfn <- confusionMatrix(as.factor(test.df$label), as.factor(pred.class))
+cat("Overall accuracy:", cfn$overall["Accuracy"], "\n")
+cl <- cfn$byClass
+cl <- cl %>% round(3)
+cat("Class 0: Sens. =", cl[1,1], ", Spec. =", cl[1, 2],
+    ", Bal. Acc =", cl[1,11], "\n")
+cat("Class 1: Sens. =", cl[2,1], ", Spec. =", cl[2, 2],
+    ", Bal. Acc =", cl[2,11], "\n")
+cat("Class 2: Sens. =", cl[3,1], ", Spec. =", cl[3, 2],
+    ", Bal. Acc =", cl[3,11], "\n")
+cat("Class 3: Sens. =", cl[4,1], ", Spec. =", cl[4, 2],
+    ", Bal. Acc =", cl[4,11], "\n")
+```
+
+### (b)
+```{r}
+m_1 <- model_list # from previous
+model <- NULL
+m_32 <- create_model(32)
+model <- NULL
+m_64 <- create_model(64)
+model <- NULL
+m_128 <- create_model(128)
+model <- NULL
+m_256 <- create_model(256)
+```
+
+```{r}
+get_stats <- function(m, batch){
+  model_s <- m$model
+  model_s %>% evaluate(as.matrix(x_test), to_categorical(test.df$label))
+  pred.class  <- model_s %>% predict_classes(x_test)
+  pred.prob   <- model_s %>% predict(x_test) %>% round(3)
+  # sometimes the prediction doesnt predict a class - so error in cfn
+  # make it so that if no prediction, make that pred.class to be 0
+  head(pred.class)
+  cfn <- confusionMatrix(as.factor(test.df$label), as.factor(pred.class))
+  cat("Batch size:", batch, "\n")
+  cat("Time taken:", m$time, "seconds\n")
+  cat("Overall accuracy:", cfn$overall["Accuracy"], "\n")
+  cl <- cfn$byClass
+  cl <- cl %>% round(3)
+  cat("Class 0: Sens. =", cl[1,1], ", Spec. =", cl[1, 2],
+      ", Bal. Acc =", cl[1,11], "\n")
+  cat("Class 1: Sens. =", cl[2,1], ", Spec. =", cl[2, 2],
+      ", Bal. Acc =", cl[2,11], "\n")
+  cat("Class 2: Sens. =", cl[3,1], ", Spec. =", cl[3, 2],
+      ", Bal. Acc =", cl[3,11], "\n")
+  cat("Class 3: Sens. =", cl[4,1], ", Spec. =", cl[4, 2],
+      ", Bal. Acc =", cl[4,11], "\n")
+}
+get_stats(m_1, 1)
+get_stats(m_32, 32)
+get_stats(m_64, 64)
+get_stats(m_128, 128)
+get_stats(m_256, 256)
+```
+### (c)
+The time it takes to train the neural network decreases as batch_size increases. This is because the batch_size impacts how quickly the model learns because batch size is the number of samples used to train the network each time. For each epoch, the algorithm takes batch_size samples and trains the network, and the next batch_size samples, until it uses all the training samples. Thus, the higher the batch_size the faster the model is trained.
+
+As the batch_size increases the overall accuracy, balanced accuracy and per-class statistics do not remain the same, and actually lowers. With a batch_size of 1, the overall accuracy was 0.775 and with batch_size of 256, it went down to 0.47. This lower accuracy is probably because a higher batch_size results in a model that converges more slowly, so having the same epoch while increasing batch_size resulted in lower accuracies. It may also be the case that increasing batch_size resulted in overfitting which is the reason for lower accuracy.
+
+### (d)
+I added another layer with a different activation function because I feel like having the same activation function wouldn't affect the model that much while a different activation function would change things up a bit and probably increase accuracy. In terms of neurons, In general I think the more neurons the better, so I doubled the neurons of the previous layer.
+
+```{r}
+model <- NULL
+model <- keras_model_sequential() %>%
+  layer_dense(units = 6, activation="sigmoid", input_shape=c(3)) %>%
+  layer_dense(units = 12, activation="tanh") %>%
+  layer_dense(units = 4, activation="softmax")
+model %>% 
+  compile(loss = "categorical_crossentropy", 
+          optimizer="adam", 
+          metrics=c("accuracy"))
+begin <- Sys.time()
+model %>% fit(
+  data.matrix(x_train),
+  to_categorical(train.df$label),
+  epochs=100,
+  batch_size= 1,
+  validation_split=0.20
+)
+end <- Sys.time()
+time <- as.numeric(difftime(end, begin, units = "secs"), units = "secs")
+re <- list("model" = model, "time" = time)
+```
+
+```{r}
+get_stats(re, 1)
+```
+Seeing that the accuracy increased, so I decided to increase the neurons of the second layer once more
+```{r}
+model <- NULL
+model <- keras_model_sequential() %>%
+  layer_dense(units = 6, activation="sigmoid", input_shape=c(3)) %>%
+  layer_dense(units = 24, activation="tanh") %>%
+  layer_dense(units = 4, activation="softmax")
+model %>% 
+  compile(loss = "categorical_crossentropy", 
+          optimizer="adam", 
+          metrics=c("accuracy"))
+begin <- Sys.time()
+model %>% fit(
+  data.matrix(x_train),
+  to_categorical(train.df$label),
+  epochs=100,
+  batch_size= 1,
+  validation_split=0.20
+)
+end <- Sys.time()
+time <- as.numeric(difftime(end, begin, units = "secs"), units = "secs")
+re <- list("model" = model, "time" = time)
+```
+
+```{r}
+get_stats(re, 1)
+```
+### (d.a)
+I added another layer using the activation function different from the first layer, tanh, and also a significantly higher number of neurons, 24. This resulted in an accuracy of 0.795 which is 0.02 higher than my initial model with overall accuracy of 0.775. Thus, adding a new hidden layer does increase the performance if done correctly. I probably could have added more neurons or tried another activation function to get more increase in performance.
